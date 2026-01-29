@@ -2,47 +2,58 @@
   <h1>⚡ Smart Energy Terminal</h1>
   <hr/>
   <p>
-    <b>智能能源监控终端</b> | <b>STM32F407ZGT6</b> · <b>Bare Metal</b>（点灯起步） → <b>FreeRTOS</b> → <b>ESP8266 AT</b> → <b>Modbus RTU</b>
+    <b>智能能源监控终端</b> | 基于 <b>STM32F407ZGT6</b> + <b>FreeRTOS</b> + <b>ESP8266 AT</b> + <b>Modbus RTU</b> + <b>LVGL</b> + <b>FatFs</b> + <b>OTA</b>
   </p>
   <p>
-    <img alt="Stage" src="https://img.shields.io/badge/Stage-Bare%20Metal-informational?style=flat-square" />
     <img alt="MCU" src="https://img.shields.io/badge/MCU-STM32F407ZGT6-blue?style=flat-square" />
-    <img alt="RTOS" src="https://img.shields.io/badge/RTOS-FreeRTOS%20(planned)-green?style=flat-square" />
-    <img alt="Network" src="https://img.shields.io/badge/Network-ESP8266%20AT%20(planned)-brightgreen?style=flat-square" />
-    <img alt="Protocol" src="https://img.shields.io/badge/Protocol-Modbus%20RTU%20(planned)-orange?style=flat-square" />
+    <img alt="RTOS" src="https://img.shields.io/badge/RTOS-FreeRTOS-green?style=flat-square" />
+    <img alt="Network" src="https://img.shields.io/badge/Network-ESP8266%20AT-brightgreen?style=flat-square" />
+    <img alt="Protocol" src="https://img.shields.io/badge/Protocol-Modbus%20RTU-orange?style=flat-square" />
+  </p>
+  <p>
+    <img alt="UI" src="https://img.shields.io/badge/UI-LVGL-7c3aed?style=flat-square" />
+    <img alt="Storage" src="https://img.shields.io/badge/Storage-FatFs-1f6feb?style=flat-square" />
+    <img alt="Upgrade" src="https://img.shields.io/badge/Upgrade-OTA-ff4d4f?style=flat-square" />
     <img alt="License" src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" />
+  </p>
+  <p>
+    <sub>可靠通信 · 本地显示 · 外部存储 · 远程升级</sub>
   </p>
 </div>
 
-> 当前目标：**裸机点灯（LED Blink）**，先把“能编译、能烧录、能稳定运行”的最小闭环跑通。
-
 ---
-
-## 目录
-
-- [项目简介](#项目简介)
-- [项目进度](#项目进度)
-- [技术栈](#技术栈)
-- [硬件平台（目标）](#硬件平台目标)
-- [快速开始](#快速开始)
-- [目录结构](#目录结构)
-- [目录说明](#目录说明)
-- [分层约定（简版）](#分层约定简版)
-- [后续扩展建议（放置位置）](#后续扩展建议放置位置)
-- [License](#license)
 
 ## 项目简介
 
-Smart Energy Terminal 旨在构建一个 **可演示、可测试、可扩展** 的能源监控终端原型。
+Smart Energy Terminal 是一款面向工业场景的智能能源监控终端，能够实时采集电压、电流、功率等能源数据，通过Modbus RTU 协议与上位机/SCADA 系统通信，支持本地触摸屏显示和远程 OTA 固件升级。
 
-项目采用“先最小闭环、再逐步扩展”的路线：
+## 项目亮点
 
-1. **Bare Metal 点灯**（本阶段）
-2. 引入 **HAL/LL**（可选）与更规范的驱动抽象
-3. 引入 **FreeRTOS**，形成任务/服务化业务组织
-4. 引入 **ESP8266 AT** 联网（UART + DMA + IDLE + RingBuffer）
-5. 引入 **Modbus RTU** 协议栈与寄存器模型
-6. 逐步扩展 **LVGL / FatFs / OTA** 等能力
+- **工程化分层**：平台/板级/驱动/应用清晰分层，便于协作与维护
+- **通信与协议**：ESP8266 AT + Modbus RTU 组合，覆盖工业通信常见场景
+- **本地显示与存储**：LVGL 本地 UI + FatFs 外部存储，便于落地产品化功能
+- **远程升级**：预留 OTA/Bootloader 路径，支持后续量产迭代
+
+## ✨ 核心特性
+
+| 特性                 | 描述                                                         |
+| -------------------- | ------------------------------------------------------------ |
+| 🔌 **多参数采集**     | 通过 INA226 高精度传感器采集电压、电流、功率，支持滑动平均滤波 |
+| 🌐 **通信与协议**     | ESP8266 AT + Modbus RTU 组合，覆盖工业通信常见场景           |
+| 📊 **本地触摸屏 GUI** | LCD 实时显示能耗曲线、告警信息，支持参数配置，增量刷新优化   |
+| ⚠️ **智能报警**       | 过压/欠压/过流/过功率检测，联动继电器自动切断负载，支持阈值动态修改 |
+| 💾 **数据持久化**     | SPI Flash 存储历史数据，支持 30 天循环覆盖，掉电保护 <0.1% 数据丢失 |
+| 🔄 **OTA 远程升级**   | HTTP 接口上传固件，CRC32 校验，双分区安全升级，支持 Bootloader |
+| 🛡️ **系统可靠性**     | 独立看门狗 (IWDG)、PVD 掉电保护、任务栈监控、故障自恢复      |
+| 🌐 **Web 管理面板**   | 实时数据监控、历史曲线、参数配置、固件升级，支持 WebSocket 推送 |
+
+## 🎯 应用场景
+
+- 🏭 **工业配电监控** - 车间/产线电力参数实时监测
+- 🏢 **楼宇能源管理** - 分户/分区电能计量与统计
+- ☀️ **光伏/储能系统** - 发电量、用电量数据采集
+- 🔬 **实验室电源监控** - 精密设备供电状态监测
+- 📚 **嵌入式学习项目** - FreeRTOS + ESP8266 AT + Modbus 综合实践
 
 ## 项目进度
 
@@ -68,7 +79,14 @@ Smart Energy Terminal 旨在构建一个 **可演示、可测试、可扩展** �
 - 烧录/调试：OpenOCD + Cortex-Debug（VS Code）
 - 规划：FreeRTOS、ESP8266 AT、Modbus RTU、LVGL、FatFs、CAN
 
-## 硬件平台（目标）
+## 🛠️ 硬件与开发环境
+
+- 目标硬件：STM32F407ZGT6（Cortex-M4F，168MHz，1MB Flash / 192KB SRAM）
+- 调试下载：CMSIS-DAP（SWD）
+- 供电与接口：板载 3.3V/5V，支持 USB/UART/调试接口
+- 主机环境：Windows 10/11（推荐）/ macOS / Linux
+
+### 硬件平台
 
 - 开发板：正点原子探索者 V3（STM32F407ZGT6）
 - 联网（规划）：ESP8266（AT 指令，UART + DMA + IDLE + RingBuffer）
@@ -76,6 +94,13 @@ Smart Energy Terminal 旨在构建一个 **可演示、可测试、可扩展** �
 - 显示（规划）：4.3 寸 TFT，800×480（竖屏），FSMC/8080 并口
 - 外部存储（规划）：W25Q128（SPI Flash）+ TF（FatFs）
 - 总线（规划）：CAN
+
+###  开发工具
+
+- 编译器：`arm-none-eabi-gcc`
+- 构建系统：`CMake` + `Ninja`
+- 烧录调试：`OpenOCD` + `Cortex-Debug`
+- 编辑器：`VS Code`
 
 ## 快速开始
 
@@ -112,81 +137,49 @@ openocd -f interface/cmsis-dap.cfg -f target/stm32f4x.cfg -c "transport select s
 Smart_energy_terminals/
 ├─ README.md
 ├─ LICENSE
-├─ docs/
-├─ external/
-│  ├─ st/
-│  │  ├─ CMSIS/
+├─ docs/								项目文档（架构/硬件资源/协议/升级等），用于沉淀设计与约束
+├─ external/							第三方依赖的“原始代码”统一放置（尽量不在此处写业务逻辑）
+│  ├─ st/								ST 官方基础库
+│  │  ├─ CMSIS/							CMSIS Core + Device（启动、中断、寄存器映射等最底层依赖）
 │  │  │  ├─ Core/
 │  │  │  └─ Device/
-│  │  └─ STM32F4xx_HAL_Driver/
+│  │  └─ STM32F4xx_HAL_Driver/			HAL 驱动库（可选；需要时手动裁剪引入）
 │  │     ├─ Inc/
 │  │     └─ Src/
-│  ├─ FreeRTOS/
-│  ├─ FatFs/
-│  └─ LVGL/
-├─ tools/
-└─ firmware/
+│  ├─ FreeRTOS/							FreeRTOS（规划；后期引入）
+│  ├─ FatFs/							FatFs（规划；后期引入）
+│  └─ LVGL/								LVGL（规划；后期引入）
+├─ tools/								PC 侧工具与脚本（烧录/打包/辅助工具）
+└─ firmware/							固件工程本体（自研代码为主）
+   ├─ app/								应用入口与业务编排（裸机 main / 后期 RTOS task 也在此）
+   │  └─ inc/	
+   |  └─ src/
    ├─ CMakeLists.txt
-   ├─ CMakePresets.json
-   ├─ cmake/
-   ├─ linker/
-   ├─ config/
-   ├─ platform/
-   │  └─ stm32f407/
-   │     ├─ include/
-   │     ├─ src/
-   │     ├─ startup/
-   │     └─ system/
-   ├─ boards/
+   ├─ cmake/							CMake 工具链文件、通用宏与构建封装
+   ├─ linker/							链接脚本（.ld），描述 Flash/RAM 布局与段映射
+   ├─ config/							工程/产品级配置头文件（后期集中管理开关与参数）
+   ├─ platform/							
+   │  └─ stm32f407/						平台适配层（与芯片强绑定）
+   │     ├─ include/					平台层对外头文件（自研，避免再放一份 CMSIS）
+   │     ├─ src/						平台层实现（如 clock、irq、tick 等封装）
+   │     ├─ startup/					启动文件（向量表、复位入口等）
+   │     └─ system/						系统初始化（时钟、FPU、SysTick 等）
+   ├─ boards/							板级“真相源”（只描述硬件事实：引脚/外设占用/LED 有效电平等）
    │  └─ explorer_v3/
    │     ├─ include/
    │     └─ src/
-   ├─ drivers/
-   │  ├─ gpio/
-   │  ├─ uart/
-   │  ├─ spi/
-   │  └─ comm/
-   ├─ common/
+   ├─ drivers/							驱动层（尽量不依赖 RTOS；上层通过接口调用）
+   │  ├─ gpio/							GPIO 基础驱动/封装（点灯阶段会优先使用）
+   │  ├─ uart/							UART 驱动（后期用于日志与 ESP8266）
+   │  ├─ spi/							SPI 驱动（后期用于 W25Qxx 等）
+   │  └─ comm/							通信相关驱动（规划：ESP8266 AT 协议解析/收发）
+   ├─ common/							与芯片无关的通用库
    │  ├─ log/
-   │  └─ utils/
-   ├─ app/
-   └─ tests/
+   │  └─ utils/							小工具（ringbuffer/crc/delay 等）
+   └─ tests/							测试（可选：host 侧单测/静态检查等）
 ```
 
-## 目录说明
-
-- `docs/`：项目文档（架构/硬件资源/协议/升级等），用于沉淀设计与约束
-- `external/`：第三方依赖的“原始代码”统一放置（尽量不在此处写业务逻辑）
-- `external/st/`：ST 官方基础库
-- `external/st/CMSIS/`：CMSIS Core + Device（启动、中断、寄存器映射等最底层依赖）
-- `external/st/STM32F4xx_HAL_Driver/`：HAL 驱动库（可选；需要时手动裁剪引入）
-- `external/FreeRTOS/`：FreeRTOS（规划；后期引入）
-- `external/FatFs/`：FatFs（规划；后期引入）
-- `external/LVGL/`：LVGL（规划；后期引入）
-- `tools/`：PC 侧工具与脚本（烧录/打包/辅助工具）
-
-- `firmware/`：固件工程本体（自研代码为主）
-- `firmware/cmake/`：CMake 工具链文件、通用宏与构建封装
-- `firmware/linker/`：链接脚本（`.ld`），描述 Flash/RAM 布局与段映射
-- `firmware/config/`：工程/产品级配置头文件（后期集中管理开关与参数）
-- `firmware/platform/stm32f407/`：平台适配层（与芯片强绑定）
-- `firmware/platform/stm32f407/startup/`：启动文件（向量表、复位入口等）
-- `firmware/platform/stm32f407/system/`：系统初始化（时钟、FPU、SysTick 等）
-- `firmware/platform/stm32f407/include/`：平台层对外头文件（自研，避免再放一份 CMSIS）
-- `firmware/platform/stm32f407/src/`：平台层实现（如 clock、irq、tick 等封装）
-- `firmware/boards/`：板级“真相源”（只描述硬件事实：引脚/外设占用/LED 有效电平等）
-- `firmware/drivers/`：驱动层（尽量不依赖 RTOS；上层通过接口调用）
-- `firmware/drivers/gpio/`：GPIO 基础驱动/封装（点灯阶段会优先使用）
-- `firmware/drivers/uart/`：UART 驱动（后期用于日志与 ESP8266）
-- `firmware/drivers/spi/`：SPI 驱动（后期用于 W25Qxx 等）
-- `firmware/drivers/comm/`：通信相关驱动（规划：ESP8266 AT 协议解析/收发）
-- `firmware/common/`：与芯片无关的通用库
-- `firmware/common/log/`：日志模块（规划/逐步落地）
-- `firmware/common/utils/`：小工具（ringbuffer/crc/delay 等）
-- `firmware/app/`：应用入口与业务编排（裸机 main / 后期 RTOS task 也在此）
-- `firmware/tests/`：测试（可选：host 侧单测/静态检查等）
-
-## 分层约定（简版）
+### 分层约定（简版）
 
 - `external/`：只放第三方“原始库”；若需要改动，优先用补丁/适配层方式隔离
 - `platform/`：芯片级平台适配（启动/时钟/中断等），向上提供稳定接口
@@ -195,7 +188,7 @@ Smart_energy_terminals/
 - `app/`：应用入口与业务编排（当前裸机；后期可演进为 RTOS 任务/服务）
 - `common/`：通用工具库，与芯片无关
 
-## 后续扩展建议（放置位置）
+### 后续扩展建议（放置位置）
 
 - 裸机点灯：`firmware/app/` + `firmware/drivers/gpio/` + `firmware/boards/` + `firmware/platform/`
 - HAL（可选）：HAL 源码放 `external/st/STM32F4xx_HAL_Driver/`，工程内只编译用到的外设模块
@@ -204,6 +197,5 @@ Smart_energy_terminals/
 - Modbus RTU：协议状态机/寄存器模型建议放 `firmware/app/`（或后续新增 `services/` 目录）
 - LVGL/FatFs：第三方放 `external/`，板级/驱动/适配放 `firmware/`（display/storage 等目录后续按需新增）
 
-## License
 
-MIT License，详见 `LICENSE`。
+

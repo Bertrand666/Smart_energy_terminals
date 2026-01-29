@@ -29,7 +29,6 @@ Makefile
 *.obj
 
 # ===== IDE / OS =====
-.vscode/
 .idea/
 *.user
 *.suo

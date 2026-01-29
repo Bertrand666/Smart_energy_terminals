@@ -1,0 +1,52 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Firmware: Configure+Build (Ninja)",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        "cmake -S firmware -B build/firmware-gcc -G Ninja -DCMAKE_TOOLCHAIN_FILE:FILEPATH=${workspaceFolder}/firmware/cmake/toolchain-arm-none-eabi.cmake; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }; ninja -C build/firmware-gcc"
+      ],
+      "problemMatcher": "$gcc",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      }
+    },
+    {
+      "label": "Firmware: Flash (OpenOCD, CMSIS-DAP)",
+      "type": "shell",
+      "dependsOn": [
+        "Firmware: Configure+Build (Ninja)"
+      ],
+      "dependsOrder": "sequence",
+      "command": "openocd",
+      "args": [
+        "-f",
+        "interface/cmsis-dap.cfg",
+        "-f",
+        "target/stm32f4x.cfg",
+        "-c",
+        "transport select swd; adapter speed 500; init; reset halt; program build/firmware-gcc/app.elf verify reset exit"
+      ],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": false
+      },
+      "problemMatcher": [
+        "$gcc"
+      ]
+    }
+  ]
+}
