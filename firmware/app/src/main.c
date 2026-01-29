@@ -19,6 +19,9 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "gpio.h"
+#include "retarget.h"
+#include "uart.h"
+#include <stdio.h>
 
 /** @addtogroup STM32F4xx_HAL_Examples
   * @{
@@ -63,12 +66,17 @@ int main(void)
   /* Add your application code here
      */
   MX_GPIO_Init();
+  MX_USART1_UART_Init();
+  retarget_stdio_init();
+
+  printf("UART retarget ok (USART1 @ 115200)\n");
 
   /* Infinite loop */
   while (1)
   {
     HAL_GPIO_TogglePin(GPIOF, GPIO_PIN_9);
-    HAL_Delay(5000);
+    printf("Toggled\n");
+    HAL_Delay(1000);
   }
 }
 

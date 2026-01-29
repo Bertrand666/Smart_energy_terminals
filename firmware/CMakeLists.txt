@@ -47,14 +47,17 @@ target_sources(app.elf PRIVATE
   ${PROJ_ROOT}/app/src/main.c
   ${PROJ_ROOT}/app/src/stm32f4xx_it.c
   ${PROJ_ROOT}/app/src/stm32f4xx_hal_msp.c
+  ${PROJ_ROOT}/app/src/retarget.c
 
   # Drivers
   ${PROJ_ROOT}/drivers/gpio/gpio.c
+  ${PROJ_ROOT}/drivers/uart/uart.c
 
   # HAL minimal set for the current template main.c/SystemClock_Config
   ${HAL_DIR}/Src/stm32f4xx_hal.c
   ${HAL_DIR}/Src/stm32f4xx_hal_cortex.c
   ${HAL_DIR}/Src/stm32f4xx_hal_gpio.c
+  ${HAL_DIR}/Src/stm32f4xx_hal_uart.c
   ${HAL_DIR}/Src/stm32f4xx_hal_rcc.c
   ${HAL_DIR}/Src/stm32f4xx_hal_rcc_ex.c
   ${HAL_DIR}/Src/stm32f4xx_hal_pwr.c
@@ -66,6 +69,7 @@ target_sources(app.elf PRIVATE
 target_include_directories(app.elf PRIVATE
   ${PROJ_ROOT}/app/inc
   ${PROJ_ROOT}/drivers/gpio
+  ${PROJ_ROOT}/drivers/uart
 
   ${HAL_DIR}/Inc
   ${HAL_DIR}/Inc/Legacy

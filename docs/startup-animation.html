@@ -1,0 +1,594 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>STM32F407 启动过程动画演示（本项目）</title>
+    <style>
+      :root {
+        --bg: #0b1220;
+        --panel: #0f172a;
+        --panel2: #0b1326;
+        --text: #e2e8f0;
+        --muted: #94a3b8;
+        --line: #1f2937;
+        --accent: #22c55e;
+        --accent2: #0ea5e9;
+        --warn: #f59e0b;
+        --danger: #ef4444;
+        --shadow: rgba(0, 0, 0, 0.25);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: radial-gradient(1200px 600px at 30% 10%, rgba(14, 165, 233, 0.18), transparent 60%),
+          radial-gradient(900px 500px at 80% 30%, rgba(34, 197, 94, 0.14), transparent 55%),
+          var(--bg);
+        color: var(--text);
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "Microsoft YaHei", sans-serif;
+      }
+
+      header {
+        padding: 28px 22px 14px;
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+      header h1 {
+        margin: 0 0 8px;
+        font-size: 22px;
+        letter-spacing: 0.2px;
+      }
+      header p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.6;
+      }
+
+      .wrap {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 16px 22px 30px;
+        display: grid;
+        grid-template-columns: 1.05fr 0.95fr;
+        gap: 16px;
+      }
+
+      .card {
+        background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        box-shadow: 0 12px 30px var(--shadow);
+        overflow: hidden;
+      }
+
+      .card .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 14px;
+        background: rgba(255, 255, 255, 0.03);
+        border-bottom: 1px solid var(--line);
+      }
+
+      .title {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+      .pill {
+        font-size: 12px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        border: 1px solid rgba(148, 163, 184, 0.3);
+        color: var(--muted);
+        background: rgba(15, 23, 42, 0.55);
+      }
+      .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        background: var(--accent2);
+        box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.12);
+      }
+
+      .controls {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+
+      button {
+        appearance: none;
+        border: 1px solid rgba(148, 163, 184, 0.25);
+        background: rgba(2, 6, 23, 0.5);
+        color: var(--text);
+        border-radius: 10px;
+        padding: 7px 10px;
+        font-size: 12px;
+        cursor: pointer;
+        transition: transform 0.05s ease, border-color 0.2s ease, background 0.2s ease;
+      }
+      button:hover {
+        border-color: rgba(34, 197, 94, 0.55);
+        background: rgba(34, 197, 94, 0.08);
+      }
+      button:active {
+        transform: translateY(1px);
+      }
+      button[disabled] {
+        cursor: not-allowed;
+        opacity: 0.55;
+      }
+
+      .speed {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      input[type="range"] {
+        width: 120px;
+        accent-color: var(--accent);
+      }
+
+      .content {
+        padding: 14px;
+      }
+
+      /* Timeline */
+      .timeline {
+        position: relative;
+        padding-left: 20px;
+      }
+      .timeline::before {
+        content: "";
+        position: absolute;
+        left: 10px;
+        top: 6px;
+        bottom: 6px;
+        width: 2px;
+        background: linear-gradient(180deg, rgba(14, 165, 233, 0.5), rgba(34, 197, 94, 0.5));
+        border-radius: 10px;
+        opacity: 0.7;
+      }
+      .step {
+        position: relative;
+        padding: 12px 12px 12px 14px;
+        margin: 8px 0;
+        border: 1px solid rgba(148, 163, 184, 0.16);
+        border-radius: 12px;
+        background: rgba(15, 23, 42, 0.4);
+        transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+      }
+      .step::before {
+        content: "";
+        position: absolute;
+        left: -18px;
+        top: 16px;
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        background: rgba(148, 163, 184, 0.55);
+        box-shadow: 0 0 0 4px rgba(148, 163, 184, 0.12);
+      }
+      .step.active {
+        border-color: rgba(34, 197, 94, 0.6);
+        box-shadow: 0 10px 24px rgba(34, 197, 94, 0.12);
+        transform: translateY(-1px);
+      }
+      .step.active::before {
+        background: var(--accent);
+        box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.16);
+      }
+      .step .kicker {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 20px;
+        height: 20px;
+        border-radius: 8px;
+        background: rgba(14, 165, 233, 0.12);
+        border: 1px solid rgba(14, 165, 233, 0.35);
+        color: #93c5fd;
+        font-weight: 700;
+        font-size: 12px;
+      }
+      .step h3 {
+        margin: 6px 0 6px;
+        font-size: 15px;
+      }
+      .step p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 12.5px;
+        line-height: 1.6;
+      }
+
+      /* Right panel */
+      .panel {
+        display: grid;
+        grid-template-rows: auto auto 1fr;
+        height: 100%;
+      }
+      .panel .summary {
+        padding: 14px;
+        border-bottom: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.02);
+      }
+      .panel .summary h2 {
+        margin: 0 0 8px;
+        font-size: 16px;
+      }
+      .panel .summary .meta {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .tag {
+        font-size: 12px;
+        padding: 5px 10px;
+        border-radius: 999px;
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        background: rgba(2, 6, 23, 0.35);
+        color: var(--muted);
+      }
+      .tag strong {
+        color: var(--text);
+        font-weight: 600;
+      }
+      .tag.good {
+        border-color: rgba(34, 197, 94, 0.35);
+      }
+      .tag.warn {
+        border-color: rgba(245, 158, 11, 0.35);
+      }
+
+      .panel .detail {
+        padding: 14px;
+        border-bottom: 1px solid var(--line);
+      }
+      .panel .detail p {
+        margin: 0 0 10px;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.7;
+      }
+      .panel .detail .file {
+        color: var(--text);
+        font-size: 12px;
+        display: inline-flex;
+        gap: 8px;
+        align-items: center;
+        padding: 6px 10px;
+        border-radius: 10px;
+        border: 1px solid rgba(148, 163, 184, 0.22);
+        background: rgba(15, 23, 42, 0.45);
+      }
+      .panel .detail .file code {
+        color: #a5b4fc;
+      }
+
+      pre {
+        margin: 0;
+        padding: 14px;
+        background: rgba(2, 6, 23, 0.65);
+        border-top: 1px solid rgba(148, 163, 184, 0.12);
+        color: #cbd5e1;
+        overflow: auto;
+        font-size: 12px;
+        line-height: 1.55;
+      }
+      pre code {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      }
+
+      .hint {
+        margin-top: 10px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      @media (max-width: 980px) {
+        .wrap {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>STM32F407 启动过程动画演示（对照本项目文件）</h1>
+      <p>
+        目标：把 “从 0x08000000 取向量表 → Reset_Handler → SystemInit → main → HAL_Init → GPIO Toggle”
+        这条链路用动画讲清楚。你可以边看动画，边对照右侧的文件路径与关键代码片段。
+      </p>
+    </header>
+
+    <div class="wrap">
+      <section class="card">
+        <div class="topbar">
+          <div class="title">
+            <span class="dot" aria-hidden="true"></span>
+            <span>启动链路（时间线）</span>
+            <span class="pill" id="progressPill">0 / 0</span>
+          </div>
+          <div class="controls">
+            <button id="btnPlay">播放</button>
+            <button id="btnPause" disabled>暂停</button>
+            <button id="btnStep">单步</button>
+            <button id="btnReset">复位</button>
+            <div class="speed">
+              <span>速度</span>
+              <input id="speed" type="range" min="350" max="2000" value="1100" step="50" />
+              <span id="speedLabel">1.1s</span>
+            </div>
+          </div>
+        </div>
+        <div class="content">
+          <div class="timeline" id="timeline"></div>
+          <div class="hint">
+            提示：这个演示强调“最小闭环”。真实系统还会涉及更多外设中断、堆栈/内存、Cache、Bootloader/VTOR 重定位等。
+          </div>
+        </div>
+      </section>
+
+      <aside class="card panel">
+        <div class="topbar">
+          <div class="title">
+            <span class="dot" aria-hidden="true" style="background: var(--accent); box-shadow: 0 0 0 4px rgba(34,197,94,.12)"></span>
+            <span>当前步骤说明</span>
+          </div>
+          <span class="pill" id="statePill">等待播放</span>
+        </div>
+
+        <div class="summary">
+          <h2 id="detailTitle">选择一个步骤开始</h2>
+          <div class="meta" id="meta"></div>
+        </div>
+
+        <div class="detail">
+          <p id="detailText"></p>
+          <div class="file" id="detailFile" style="display: none">
+            📄 <code id="detailFilePath"></code>
+          </div>
+        </div>
+
+        <pre><code id="detailCode"></code></pre>
+      </aside>
+    </div>
+
+    <script>
+      const steps = [
+        {
+          no: 1,
+          title: "复位后取向量表（0x08000000）",
+          kicker: "CPU/Flash",
+          desc:
+            "上电/复位后，CPU 从 0x08000000 读取初始栈顶（MSP）与 Reset_Handler 地址，并准备跳转执行。这个地址映射由启动模式/BOOT 配置决定。",
+          file: "firmware/app/app.ld",
+          tags: [{ t: "地址", v: "0x08000000", cls: "good" }, { t: "向量表", v: ".isr_vector", cls: "good" }],
+          code:
+            "/* firmware/app/app.ld */\nENTRY(Reset_Handler)\n\nMEMORY {\n  FLASH (rx)  : ORIGIN = 0x08000000, LENGTH = 1024K\n  RAM   (xrw) : ORIGIN = 0x20000000, LENGTH = 128K\n}\n\n.isr_vector : {\n  KEEP(*(.isr_vector))\n} > FLASH\n",
+        },
+        {
+          no: 2,
+          title: "Reset_Handler：建立 C 运行时环境",
+          kicker: "startup",
+          desc:
+            "启动文件做最小必要工作：设置 SP，拷贝 .data（Flash→RAM），清零 .bss，然后调用 SystemInit() 与 main()。",
+          file: "firmware/platform/stm32f407/startup/startup_stm32f407xx.s",
+          tags: [{ t: "关键", v: "拷贝 .data / 清零 .bss", cls: "good" }, { t: "入口", v: "Reset_Handler", cls: "good" }],
+          code:
+            "; firmware/platform/stm32f407/startup/startup_stm32f407xx.s\nReset_Handler:\n  ldr   sp, =_estack\n  ; Copy .data from FLASH to RAM\n  ldr r0, =_sdata\n  ldr r1, =_edata\n  ldr r2, =_sidata\n  ...\n  ; Zero .bss\n  ldr r2, =_sbss\n  ldr r4, =_ebss\n  ...\n  bl  SystemInit\n  bl  __libc_init_array\n  bl  main\n",
+        },
+        {
+          no: 3,
+          title: "SystemInit：最早期系统初始化（FPU/VTOR 等）",
+          kicker: "CMSIS system",
+          desc:
+            "SystemInit() 在 main 之前执行，用于做最早期的系统设置，比如 FPU 配置、向量表位置（SCB->VTOR）设置、以及可选的外部存储控制器初始化。",
+          file: "firmware/platform/stm32f407/system/system_stm32f4xx.c",
+          tags: [{ t: "核心", v: "SystemInit()", cls: "good" }, { t: "向量表重定位", v: "SCB->VTOR", cls: "warn" }],
+          code:
+            "/* firmware/platform/stm32f407/system/system_stm32f4xx.c */\nvoid SystemInit(void)\n{\n#if (__FPU_PRESENT == 1) && (__FPU_USED == 1)\n  SCB->CPACR |= ((3UL << 10*2) | (3UL << 11*2));\n#endif\n  SystemInit_ExtMemCtl();\n  SCB->VTOR = VECT_TAB_BASE_ADDRESS | VECT_TAB_OFFSET;\n}\n",
+        },
+        {
+          no: 4,
+          title: "main：HAL_Init → 时钟配置 → GPIO 初始化",
+          kicker: "application",
+          desc:
+            "进入 main 后，先 HAL_Init() 初始化 HAL 底座（含时基），然后配置系统时钟到目标频率，再初始化 GPIO，最后进入 while 循环点灯。",
+          file: "firmware/app/src/main.c",
+          tags: [{ t: "入口", v: "main()", cls: "good" }, { t: "时钟", v: "SystemClock_Config()", cls: "good" }],
+          code:
+            "/* firmware/app/src/main.c */\nHAL_Init();\nSystemClock_Config();\nMX_GPIO_Init();\n\nwhile (1) {\n  HAL_GPIO_TogglePin(GPIOF, GPIO_PIN_9);\n  HAL_Delay(5000);\n}\n",
+        },
+        {
+          no: 5,
+          title: "MX_GPIO_Init：端口时钟 + 引脚模式配置",
+          kicker: "driver",
+          desc:
+            "点灯最小闭环只需要：使能 GPIO 端口时钟，把 LED 引脚配置为推挽输出，然后就能用 HAL_GPIO_TogglePin 翻转电平。",
+          file: "firmware/drivers/gpio/gpio.c",
+          tags: [{ t: "GPIO", v: "PF9", cls: "good" }, { t: "模式", v: "Output PP", cls: "good" }],
+          code:
+            "/* firmware/drivers/gpio/gpio.c */\n__HAL_RCC_GPIOF_CLK_ENABLE();\n\nHAL_GPIO_WritePin(GPIOF, GPIO_PIN_9, GPIO_PIN_RESET);\n\nGPIO_InitStruct.Pin = GPIO_PIN_9;\nGPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;\nGPIO_InitStruct.Pull = GPIO_NOPULL;\nGPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;\nHAL_GPIO_Init(GPIOF, &GPIO_InitStruct);\n",
+        },
+        {
+          no: 6,
+          title: "SysTick_Handler：HAL_Delay 的时间基座",
+          kicker: "interrupt",
+          desc:
+            "HAL_Delay 依赖 uwTick 递增。通常 SysTick 每 1ms 触发一次中断，在 SysTick_Handler() 里调用 HAL_IncTick()，让 uwTick++。",
+          file: "firmware/app/src/stm32f4xx_it.c",
+          tags: [{ t: "关键", v: "HAL_IncTick()", cls: "good" }, { t: "频率", v: "1ms tick", cls: "good" }],
+          code:
+            "/* firmware/app/src/stm32f4xx_it.c */\nvoid SysTick_Handler(void)\n{\n  HAL_IncTick();\n}\n",
+        },
+        {
+          no: 7,
+          title: "循环点灯：Toggle + Delay（可见闪烁）",
+          kicker: "loop",
+          desc:
+            "当 GPIO 已配置、SysTick 正常运行后，while(1) 中的 Toggle + Delay 就能形成可见的 LED 闪烁闭环。若不闪，优先排查引脚/电平、时钟源、SysTick。",
+          file: "firmware/app/src/main.c",
+          tags: [{ t: "现象", v: "LED 闪烁", cls: "good" }, { t: "排查", v: "引脚/时钟/SysTick", cls: "warn" }],
+          code:
+            "while (1) {\n  HAL_GPIO_TogglePin(GPIOF, GPIO_PIN_9);\n  HAL_Delay(5000);\n}\n",
+        },
+      ];
+
+      const timeline = document.getElementById("timeline");
+      const progressPill = document.getElementById("progressPill");
+      const statePill = document.getElementById("statePill");
+      const detailTitle = document.getElementById("detailTitle");
+      const detailText = document.getElementById("detailText");
+      const detailFile = document.getElementById("detailFile");
+      const detailFilePath = document.getElementById("detailFilePath");
+      const detailCode = document.getElementById("detailCode");
+      const meta = document.getElementById("meta");
+
+      const btnPlay = document.getElementById("btnPlay");
+      const btnPause = document.getElementById("btnPause");
+      const btnStep = document.getElementById("btnStep");
+      const btnReset = document.getElementById("btnReset");
+      const speed = document.getElementById("speed");
+      const speedLabel = document.getElementById("speedLabel");
+
+      progressPill.textContent = `0 / ${steps.length}`;
+
+      let index = -1;
+      let timer = null;
+
+      function renderTimeline() {
+        timeline.innerHTML = "";
+        steps.forEach((s, i) => {
+          const el = document.createElement("div");
+          el.className = "step";
+          el.tabIndex = 0;
+          el.dataset.index = i;
+          el.innerHTML = `
+            <div class="kicker"><span class="badge">${s.no}</span><span>${s.kicker}</span></div>
+            <h3>${s.title}</h3>
+            <p>${s.desc}</p>
+          `;
+          el.addEventListener("click", () => go(i, { fromUser: true }));
+          el.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" || e.key === " ") go(i, { fromUser: true });
+          });
+          timeline.appendChild(el);
+        });
+      }
+
+      function renderDetail(i) {
+        const s = steps[i];
+        detailTitle.textContent = s.title;
+        detailText.textContent = s.desc;
+        detailFile.style.display = s.file ? "inline-flex" : "none";
+        detailFilePath.textContent = s.file || "";
+        detailCode.textContent = s.code || "";
+
+        meta.innerHTML = "";
+        (s.tags || []).forEach((tag) => {
+          const t = document.createElement("span");
+          t.className = `tag ${tag.cls || ""}`;
+          t.innerHTML = `<strong>${tag.t}</strong>：${tag.v}`;
+          meta.appendChild(t);
+        });
+      }
+
+      function updateActive() {
+        const nodes = timeline.querySelectorAll(".step");
+        nodes.forEach((n) => n.classList.remove("active"));
+        if (index >= 0 && nodes[index]) nodes[index].classList.add("active");
+        progressPill.textContent = `${Math.max(index + 1, 0)} / ${steps.length}`;
+      }
+
+      function go(i, opts = {}) {
+        index = Math.max(-1, Math.min(steps.length - 1, i));
+        if (index >= 0) renderDetail(index);
+        updateActive();
+        if (opts.fromUser) {
+          statePill.textContent = "手动选择";
+        }
+      }
+
+      function stop() {
+        if (timer) window.clearInterval(timer);
+        timer = null;
+        btnPlay.disabled = false;
+        btnPause.disabled = true;
+      }
+
+      function play() {
+        stop();
+        btnPlay.disabled = true;
+        btnPause.disabled = false;
+        statePill.textContent = "播放中";
+        const interval = Number(speed.value);
+        timer = window.setInterval(() => {
+          if (index < steps.length - 1) {
+            go(index + 1);
+          } else {
+            statePill.textContent = "播放完成";
+            stop();
+          }
+        }, interval);
+      }
+
+      function stepOnce() {
+        stop();
+        statePill.textContent = "单步";
+        if (index < steps.length - 1) go(index + 1);
+      }
+
+      function reset() {
+        stop();
+        index = -1;
+        detailTitle.textContent = "选择一个步骤开始";
+        detailText.textContent = "点击左侧步骤或点“播放/单步”。";
+        detailFile.style.display = "none";
+        detailFilePath.textContent = "";
+        detailCode.textContent = "";
+        meta.innerHTML = "";
+        updateActive();
+        statePill.textContent = "等待播放";
+      }
+
+      function updateSpeedLabel() {
+        speedLabel.textContent = `${(Number(speed.value) / 1000).toFixed(2)}s`;
+      }
+
+      btnPlay.addEventListener("click", () => play());
+      btnPause.addEventListener("click", () => {
+        statePill.textContent = "已暂停";
+        stop();
+      });
+      btnStep.addEventListener("click", () => stepOnce());
+      btnReset.addEventListener("click", () => reset());
+      speed.addEventListener("input", () => {
+        updateSpeedLabel();
+        if (timer) play(); // 运行中改变速度：重启计时器
+      });
+
+      renderTimeline();
+      updateSpeedLabel();
+      reset();
+    </script>
+  </body>
+</html>
+
