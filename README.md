@@ -62,14 +62,15 @@ Smart Energy Terminal 是一款面向工业场景的智能能源监控终端，�
 | 模块 | 状态 | 说明 |
 |---|---|---|
 | 最小闭环（裸机点灯） | 进行中 | GPIO 初始化 + 周期翻转 + 延时 |
-| 工具链（CMake + GCC + OpenOCD） | 进行中 | 不依赖 CubeMX/CubeIDE |
-| HAL（可选） | 规划 | 手动移植/裁剪，仅引入所需外设 |
-| RTOS（FreeRTOS） | 规划 | 裸机稳定后再引入 |
-| 联网（ESP8266 AT） | 规划 | UART + DMA + IDLE + RingBuffer |
-| 协议（Modbus RTU） | 规划 | 寄存器建模、异常码、CRC |
+| 工具链（CMake + GCC + OpenOCD） | 进行中 | 跨平台交叉编译 |
+| HAL | 规划 | 手动移植/裁剪，仅引入所需外设 |
+| RTOS（FreeRTOS） | 规划 | 引入任务/队列/事件组；按采集/通信/OTA 分层 |
+| 联网（ESP8266 AT） | 规划 | UART + DMA + IDLE + RingBuffer；设备主动连云 |
+| 上云（MQTT/HTTP） | 规划 | MQTT 优先（长连接、低开销）；HTTP 备选 |
+| 协议（Modbus RTU） | 规划 | 作为现场/工业侧接口：寄存器建模、异常码、CRC |
 | UI（LVGL） | 规划 | TFT/触摸/局部刷新 |
 | 外部存储（Flash/TF + FatFs） | 规划 | W25Qxx + FatFs |
-| OTA/Bootloader | 规划 | 分区/镜像/回滚策略 |
+| OTA/Bootloader | 规划 | 下载校验 + 断点续传 + 双分区/回滚 |
 
 ## 技术栈
 
@@ -77,7 +78,95 @@ Smart Energy Terminal 是一款面向工业场景的智能能源监控终端，�
 - 当前阶段：Bare Metal（无 RTOS）
 - 构建：CMake / Ninja / arm-none-eabi-gcc
 - 烧录/调试：OpenOCD + Cortex-Debug（VS Code）
-- 规划：FreeRTOS、ESP8266 AT、Modbus RTU、LVGL、FatFs、CAN
+- 规划：FreeRTOS、ESP8266 AT、Modbus RTU、MQTT/HTTP 上云、WebSocket 实时推送、LVGL、FatFs、OTA/Bootloader、CAN
+
+## 总体方案
+
+本机传感器 + 云服务器 + Web 实时展示，采用 **工业侧标准接口 + 云侧遥测协议** 的组合：
+
+- **本地/工业侧**：实现 Modbus RTU（从站）作为现场可对接接口（可选但非常加分）
+- **上云/网页侧**：设备通过 ESP8266 作为客户端 **主动上报云端**（MQTT 优先，HTTP 备选），云端再通过 WebSocket 推送给 Web 页面
+
+这样做的好处：
+
+- 兼顾工业生态（PLC/SCADA/串口工具）与云端实时体验
+- 设备主动连云，天然适配 NAT/无公网 IP 场景
+- 便于接入 FreeRTOS 与 OTA（任务划分清晰、链路可观测）
+
+### 端到端数据流图（推荐）
+
+```mermaid
+flowchart LR
+  Sensor[本机传感器/计量芯片] -->|I2C/SPI/ADC| MCU[STM32F407]
+
+  subgraph MCU_SIDE[设备侧（固件）]
+    MCU --> Telemetry[telemetry 数据模型]
+    MCU --> RegMap[Modbus 寄存器表（可选）]
+    MCU --> OtaCtl[OTA 状态机]
+    MCU --> Storage[(外部 Flash/TF + FatFs 可选)]
+  end
+
+  MCU -->|UART| ESP[ESP8266 AT]
+  ESP -->|MQTT/HTTP（设备主动上报）| Cloud[云服务（接入层）]
+  Cloud --> Cache[(缓存/时序库)]
+  Cloud -->|WebSocket/SSE| Web[Web 页面实时展示]
+
+  RegMap -->|RS-485 Modbus RTU（可选）| PLC[PLC/SCADA/现场工具]
+  Web -->|配置/控制| Cloud
+  Cloud -->|下发配置/OTA 指令| ESP
+  OtaCtl -->|下载包缓存（可选）| Storage
+```
+
+### 实时显示时序（MQTT + WebSocket）
+
+```mermaid
+sequenceDiagram
+  participant S as Sensor
+  participant M as MCU(STM32)
+  participant E as ESP8266(AT)
+  participant C as Cloud
+  participant W as Web
+
+  loop 采样周期（例如 100ms）
+    S->>M: 采集原始值
+    M->>M: 滤波/计算/更新 telemetry
+  end
+
+  loop 上报周期（例如 1s）
+    M->>E: 组包（JSON/二进制）
+    E->>C: MQTT PUBLISH（或 HTTP POST）
+    C->>C: 入库/更新缓存
+    C->>W: WebSocket 推送最新 telemetry
+  end
+```
+
+### 1) 核心数据模型（建议）
+
+先把“采集到的量”抽象为统一数据源（后续 Modbus/MQTT/本地显示都复用）：
+
+- `telemetry`：电压/电流/功率/能量/温度等数值 + 时间戳 + 状态位（告警/传感器离线/校准状态等）
+- `config`：阈值/采样周期/上报频率/设备 ID/联网参数等
+
+### 2) FreeRTOS 任务划分（建议）
+
+在 FreeRTOS 引入后，建议按“数据流”拆任务，避免业务逻辑散落在中断与驱动层：
+
+- `sensor_task`：采集 + 滤波 + 生成 telemetry（固定周期）
+- `comm_task`：对外通信（MQTT/HTTP 上报；可扩展命令下发）
+- `modbus_task`（可选）：维护寄存器表与 RTU 协议栈（从站响应）
+- `storage_task`（可选）：FatFs 写入历史数据/日志/升级包缓存
+- `ota_task`：升级检查、下载、校验、切换、失败回滚
+
+任务间推荐用 Queue/EventGroup，驱动层尽量保持“无 RTOS 依赖”。
+
+### 3) OTA 升级策略（建议）
+
+面向量产可靠性，建议实现：
+
+- **下载校验**：CRC32（基础）/签名校验（进阶加分）
+- **断点续传**：升级包可先落到外部 Flash/TF（FatFs），或分块写入升级分区
+- **双分区/回滚**：Bootloader 根据镜像标志位选择启动；失败自动回滚到旧版本
+- **版本管理**：防回退、升级过程状态上报（便于云端可视化）
 
 ## 🛠️ 硬件与开发环境
 
@@ -109,15 +198,23 @@ Smart Energy Terminal 是一款面向工业场景的智能能源监控终端，�
 ### 1) 构建
 
 ```bash
-cmake --preset default
-cmake --build --preset default
+cmake -S firmware -B build/firmware-gcc -G Ninja -DCMAKE_TOOLCHAIN_FILE:FILEPATH=%cd%/firmware/cmake/toolchain-arm-none-eabi.cmake
+ninja -C build/firmware-gcc
 ```
+
+也可以直接在 VS Code 里运行任务：
+
+- `Firmware: Configure+Build (Ninja)`
 
 ### 2) 烧录（示例：OpenOCD）
 
 ```bash
-openocd -f interface/cmsis-dap.cfg -f target/stm32f4x.cfg -c "transport select swd; adapter speed 2000; program firmware/build/out/app.elf verify reset exit"
+openocd -f interface/cmsis-dap.cfg -f target/stm32f4x.cfg -c "transport select swd; adapter speed 500; init; reset halt; program build/firmware-gcc/app.elf verify reset exit"
 ```
+
+也可以直接在 VS Code 里运行任务：
+
+- `Firmware: Flash (OpenOCD, CMSIS-DAP)`
 
 连接不稳定时的经验项：
 
@@ -128,6 +225,41 @@ openocd -f interface/cmsis-dap.cfg -f target/stm32f4x.cfg -c "transport select s
 
 - 调试配置通常放在 `.vscode/launch.json`，使用 `Cortex-Debug + OpenOCD`
 - 你可能需要按自己的调试器补齐 `configFiles` / `svdFile` 等
+
+## 当前可运行内容（最小闭环）
+
+当前固件已包含：
+
+- LED 翻转（GPIO）
+- 串口 `printf`（通过 `_write()` 重定向）
+
+对应代码入口：
+
+- 主循环：[firmware/app/src/main.c](firmware/app/src/main.c)
+- `printf` 重定向：[firmware/app/src/retarget.c](firmware/app/src/retarget.c)
+- UART 初始化/发送：[firmware/drivers/uart/uart.c](firmware/drivers/uart/uart.c)
+
+> 如果你把日志接到 USB-TTL，常见是 USART1（PA9/PA10），波特率 115200（以代码为准）。
+
+## MQTT 侧建议（上云主链路）
+
+推荐把云端通信做成“设备主动上报”，并支持云端下发配置/OTA 指令：
+
+- 上报频率：默认 1 Hz（Web 曲线足够平滑），采样频率可更高但要做聚合
+- 传输层：MQTT 优先（低开销、易重连），HTTP 备选
+
+示例（仅作建议，非强制）：
+
+```text
+topic: devices/{deviceId}/telemetry
+payload: {"ts":1738195200,"v":230.1,"i":1.23,"p":283.2,"alarm":0}
+
+topic: devices/{deviceId}/cmd
+payload: {"type":"set_config","report_hz":1}
+
+topic: devices/{deviceId}/ota
+payload: {"type":"start","url":"https://.../fw.bin","crc32":"..."}
+```
 
 ## 目录结构
 
@@ -188,6 +320,8 @@ Smart_energy_terminals/
 - `app/`：应用入口与业务编排（当前裸机；后期可演进为 RTOS 任务/服务）
 - `common/`：通用工具库，与芯片无关
 
+> 建议（可选）：当通信/OTA/存储等模块增多后，可新增 `firmware/services/` 用于放置“与具体外设弱绑定的业务服务层”（例如 telemetry 管理、MQTT 客户端封装、OTA 状态机、参数配置管理），保持 `drivers/` 足够“薄”。
+
 ### 后续扩展建议（放置位置）
 
 - 裸机点灯：`firmware/app/` + `firmware/drivers/gpio/` + `firmware/boards/` + `firmware/platform/`
@@ -196,6 +330,4 @@ Smart_energy_terminals/
 - ESP8266 AT：底层 UART/DMA 在 `firmware/drivers/uart/`，协议收发/解析放 `firmware/drivers/comm/`
 - Modbus RTU：协议状态机/寄存器模型建议放 `firmware/app/`（或后续新增 `services/` 目录）
 - LVGL/FatFs：第三方放 `external/`，板级/驱动/适配放 `firmware/`（display/storage 等目录后续按需新增）
-
-
 

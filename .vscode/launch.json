@@ -1,0 +1,126 @@
+{
+  // VS Code 调试配置文件
+  // 本工程：Cortex-Debug + OpenOCD + CMSIS-DAP（SWD）调试 STM32F407
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Cortex-Debug: Launch (Stop at Reset_Handler)",
+      "type": "cortex-debug",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "servertype": "openocd",
+      "executable": "${workspaceFolder}/build/firmware-gcc/app.elf",
+      "device": "STM32F407ZGT6",
+      "interface": "swd",
+      "configFiles": [
+        "interface/cmsis-dap.cfg",
+        "target/stm32f4x.cfg"
+      ],
+      "openOCDLaunchCommands": [
+        "transport select swd",
+        "adapter speed 500",
+        "init",
+        "reset halt"
+      ],
+      "svdFile": "${workspaceFolder}/tools/svd/stm32f407.svd",
+      "preLaunchTask": "Firmware: Configure+Build (Ninja)",
+
+      // 用于研究启动流程：从 Reset_Handler（汇编启动文件）开始逐条单步
+      // 典型路径：Reset_Handler -> SystemInit -> __libc_init_array -> main
+      "runToEntryPoint": "Reset_Handler",
+
+      "showDevDebugOutput": "raw",
+      "liveWatch": {
+        "enabled": true,
+        "samplesPerSecond": 20
+      }
+    },
+    {
+      "name": "Cortex-Debug: Launch (Stop at SystemInit)",
+      "type": "cortex-debug",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "servertype": "openocd",
+      "executable": "${workspaceFolder}/build/firmware-gcc/app.elf",
+      "device": "STM32F407ZGT6",
+      "interface": "swd",
+      "configFiles": [
+        "interface/cmsis-dap.cfg",
+        "target/stm32f4x.cfg"
+      ],
+      "openOCDLaunchCommands": [
+        "transport select swd",
+        "adapter speed 500",
+        "init",
+        "reset halt"
+      ],
+      "svdFile": "${workspaceFolder}/tools/svd/stm32f407.svd",
+      "preLaunchTask": "Firmware: Configure+Build (Ninja)",
+
+      // 从 SystemInit 开始：跳过 data/bss 初始化细节，聚焦时钟/向量表等系统初始化
+      "runToEntryPoint": "SystemInit",
+
+      "showDevDebugOutput": "raw",
+      "liveWatch": {
+        "enabled": true,
+        "samplesPerSecond": 20
+      }
+    },
+    {
+      "name": "Cortex-Debug: Launch (OpenOCD + CMSIS-DAP, STM32F407)",
+      "type": "cortex-debug",
+
+      // launch：启动 OpenOCD/GDB Server，并下载/复位后开始调试
+      "request": "launch",
+
+      // 调试工作目录（一般设为工作区根目录）
+      "cwd": "${workspaceFolder}",
+
+      // 使用 OpenOCD 作为 GDB Server（与 .vscode/tasks.json 的烧录方式保持一致）
+      "servertype": "openocd",
+
+      // ELF 产物路径：调试符号、断点、反汇编、变量信息都来自这里
+      "executable": "${workspaceFolder}/build/firmware-gcc/app.elf",
+
+      // 目标芯片与调试接口类型（用于 Cortex-Debug 提供合理默认行为）
+      "device": "STM32F407ZGT6",
+      "interface": "swd",
+
+      // OpenOCD 配置文件：
+      // - interface/cmsis-dap.cfg：调试器接口（CMSIS-DAP）
+      // - target/stm32f4x.cfg：目标芯片族（STM32F4）
+      "configFiles": [
+        "interface/cmsis-dap.cfg",
+        "target/stm32f4x.cfg"
+      ],
+
+      // 启动 OpenOCD 后执行的命令（与 Flash 任务保持一致）
+      // adapter speed 500：降低 SWD 速率以提升连接稳定性（可根据线材/板子质量调高）
+      "openOCDLaunchCommands": [
+        "transport select swd",
+        "adapter speed 500",
+        "init",
+        "reset halt"
+      ],
+
+      // 外设寄存器视图依赖 SVD 文件（已放入 tools/svd/ 目录）。
+      // 启用后 Cortex-Debug 会在调试视图中提供 Peripherals 面板。
+      "svdFile": "${workspaceFolder}/tools/svd/stm32f407.svd",
+
+      // 调试前先编译（避免 build 目录被清理后直接调试导致找不到 elf）
+      "preLaunchTask": "Firmware: Configure+Build (Ninja)",
+
+      // 启动后运行到 main() 停住（想研究启动流程可改为 Reset_Handler）
+      "runToEntryPoint": "main",
+
+      // 输出 OpenOCD/GDB 交互细节（连接失败/下载失败时便于排查）
+      "showDevDebugOutput": "raw",
+
+      //实时监视
+      "liveWatch": {
+        "enabled": true,
+        "samplesPerSecond": 20
+      }
+    }
+  ]
+}

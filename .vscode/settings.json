@@ -20,5 +20,6 @@
   "search.exclude": {
     "**/build": true,
     "**/build/**": true
-  }
+  },
+  "cortex-debug.variableUseNaturalFormat": true
 }
