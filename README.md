@@ -191,6 +191,11 @@ sequenceDiagram
 - 烧录调试：`OpenOCD` + `Cortex-Debug`
 - 编辑器：`VS Code`
 
+## 文档
+
+- 文档索引： [docs/README.md](docs/README.md)
+- 串口重定向（printf）： [docs/串口重定向.md](docs/%E4%B8%B2%E5%8F%A3%E9%87%8D%E5%AE%9A%E5%90%91.md)
+
 ## 快速开始
 
 > 建议先完成最小验证：**点灯闪烁稳定**（可选再加串口打印）。

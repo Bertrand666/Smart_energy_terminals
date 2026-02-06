@@ -3,7 +3,8 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>STM32F407 启动过程动画演示（本项目）</title>
+    <title>STM32F407 启动过程动画演示 - Smart Energy Terminal</title>
+    <meta name="description" content="STM32F407 从上电到 main() 的完整启动流程可视化演示，对照项目源码理解嵌入式系统启动机制" />
     <style>
       :root {
         --bg: #0b1220;
@@ -311,10 +312,16 @@
   </head>
   <body>
     <header>
-      <h1>STM32F407 启动过程动画演示（对照本项目文件）</h1>
+      <h1>STM32F407 启动过程动画演示</h1>
       <p>
-        目标：把 “从 0x08000000 取向量表 → Reset_Handler → SystemInit → main → HAL_Init → GPIO Toggle”
+        <strong>Smart Energy Terminal 项目</strong> | 可视化理解嵌入式系统启动机制
+      </p>
+      <p>
+        目标：把 "从 0x08000000 取向量表 → Reset_Handler → SystemInit → main → HAL_Init → GPIO Toggle"
         这条链路用动画讲清楚。你可以边看动画，边对照右侧的文件路径与关键代码片段。
+      </p>
+      <p style="margin-top: 8px; font-size: 12px;">
+        💡 <strong>学习建议</strong>：先完整播放一遍了解全貌，再单步查看每个阶段的细节。点击左侧步骤可跳转到任意阶段。
       </p>
     </header>
 
