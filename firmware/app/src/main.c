@@ -65,8 +65,8 @@ int main(void)
 
   /* Add your application code here
      */
-  MX_GPIO_Init();
-  MX_USART1_UART_Init();
+  MY_GPIO_Init();
+  MY_USART1_UART_Init();
   retarget_stdio_init();
 
   printf("UART retarget ok (USART1 @ 115200)\n");

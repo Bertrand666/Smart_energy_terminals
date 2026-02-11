@@ -8,7 +8,7 @@ extern "C" {
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 
-void MX_GPIO_Init(void);
+void MY_GPIO_Init(void);
 
 #ifdef __cplusplus
 }

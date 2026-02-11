@@ -11,7 +11,7 @@ extern "C" {
 
 extern UART_HandleTypeDef huart1;
 
-void MX_USART1_UART_Init(void);
+void MY_USART1_UART_Init(void);
 int uart_write(const uint8_t *data, size_t len);
 
 #ifdef __cplusplus
