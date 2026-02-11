@@ -21,6 +21,7 @@
 #include "gpio.h"
 #include "retarget.h"
 #include "uart.h"
+#include "timer.h"
 #include <stdio.h>
 
 /** @addtogroup STM32F4xx_HAL_Examples
@@ -68,15 +69,15 @@ int main(void)
   MY_GPIO_Init();
   MY_USART1_UART_Init();
   retarget_stdio_init();
+  MY_TIM3_Init();
 
   printf("UART retarget ok (USART1 @ 115200)\n");
+  printf("TIM3 started: LED toggle @ 1s interval\n");
 
   /* Infinite loop */
   while (1)
   {
-    HAL_GPIO_TogglePin(GPIOF, GPIO_PIN_9);
-    printf("Toggled\n");
-    HAL_Delay(1000);
+    /* LED is now toggled by TIM3 interrupt callback, main loop is free */
   }
 }
 
@@ -155,10 +156,12 @@ static void SystemClock_Config(void)
   */
 static void Error_Handler(void)
 {
-  /* User may add here some code to deal with this error */
-  while(1)
-  {
-  }
+  /*
+   * 发生严重错误（如时钟配置失败）
+   * 动作：打印日志并复位
+   */
+  printf("System Error! Resetting...\n");
+  NVIC_SystemReset();
 }
 
 #ifdef  USE_FULL_ASSERT

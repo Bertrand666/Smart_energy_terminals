@@ -52,6 +52,7 @@ target_sources(app.elf PRIVATE
   # Drivers
   ${PROJ_ROOT}/drivers/gpio/gpio.c
   ${PROJ_ROOT}/drivers/uart/uart.c
+  ${PROJ_ROOT}/drivers/timer/timer.c
 
   # HAL minimal set for the current template main.c/SystemClock_Config
   ${HAL_DIR}/Src/stm32f4xx_hal.c
@@ -64,12 +65,15 @@ target_sources(app.elf PRIVATE
   ${HAL_DIR}/Src/stm32f4xx_hal_pwr_ex.c
   ${HAL_DIR}/Src/stm32f4xx_hal_flash.c
   ${HAL_DIR}/Src/stm32f4xx_hal_flash_ex.c
+  ${HAL_DIR}/Src/stm32f4xx_hal_tim.c
+  ${HAL_DIR}/Src/stm32f4xx_hal_tim_ex.c
 )
 
 target_include_directories(app.elf PRIVATE
   ${PROJ_ROOT}/app/inc
   ${PROJ_ROOT}/drivers/gpio
   ${PROJ_ROOT}/drivers/uart
+  ${PROJ_ROOT}/drivers/timer
 
   ${HAL_DIR}/Inc
   ${HAL_DIR}/Inc/Legacy

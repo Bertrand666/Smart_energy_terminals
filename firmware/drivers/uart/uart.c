@@ -2,6 +2,8 @@
 
 UART_HandleTypeDef huart1;
 
+#include <stdio.h>
+
 void MY_USART1_UART_Init(void)
 {
   huart1.Instance = USART1;
@@ -15,9 +17,13 @@ void MY_USART1_UART_Init(void)
 
   if (HAL_UART_Init(&huart1) != HAL_OK)
   {
-    while (1)
-    {
-    }
+    /*
+     * UART 初始化失败
+     * 尝试打印错误信息（可能无法输出，因为 UART 未就绪）
+     * 直接复位系统
+     */
+    printf("UART Init Failed! Resetting...\n");
+    NVIC_SystemReset();
   }
 }
 
